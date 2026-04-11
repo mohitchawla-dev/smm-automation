@@ -1,0 +1,105 @@
+name: 🤖 Daily API Automation - PrimeSMM
+
+on:
+  schedule:
+    - cron: '30 21 * * *'  # Runs at 3:00 AM IST daily (21:30 UTC = 3:00 AM IST)
+  workflow_dispatch:  # Allows manual testing from GitHub UI
+
+jobs:
+  run-api:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📡 Call PrimeSMM API
+        id: api_call
+        run: |
+          RESPONSE=$(curl -s -X POST "https://primesmm.com/api/v2" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "action": "add",
+              "service": "1254",
+              "link": "https://www.instagram.com/mht.chawla/",
+              "quantity": "400",
+              "key": "${{ secrets.PRIMESMM_API_KEY }}"
+            }')
+          
+          echo "RESPONSE=$RESPONSE" >> $GITHUB_ENV
+          echo "TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S IST')" >> $GITHUB_ENV
+          echo "STATUS=✅ API CALLED SUCCESSFULLY" >> $GITHUB_ENV
+          
+        continue-on-error: true
+
+      - name: 📧 Send Email Notification
+        if: ${{ always() }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USER }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: '✅ Daily PrimeSMM API Run - ${{ env.TIMESTAMP }}'
+          to: ${{ secrets.NOTIFY_EMAIL }}
+          from: 'GitHub Actions <noreply@github.com>'
+          body: |
+            🤖 Daily PrimeSMM API Automation Report
+            ════════════════════════════════════════
+            
+            ⏰ Execution Time: ${{ env.TIMESTAMP }}
+            ✅ Status: ${{ env.STATUS }}
+            
+            📊 API Details:
+            • Endpoint: https://primesmm.com/api/v2
+            • Action: add
+            • Service: 1254
+            • Link: https://www.instagram.com/mht.chawla/
+            • Quantity: 400
+            
+            📝 API Response:
+            ${{ env.RESPONSE }}
+            
+            ✨ Your automation is running smoothly every day at 3:00 AM IST!
+          html_body: |
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f5f5f5; padding: 20px; border-radius: 10px;">
+              <h2 style="color: #27ae60; text-align: center;">✅ Daily PrimeSMM API Automation</h2>
+              
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>⏰ Execution Time:</strong> ${{ env.TIMESTAMP }}</p>
+                <p><strong>✅ Status:</strong> ${{ env.STATUS }}</p>
+              </div>
+              
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #2c3e50;">📊 API Request Details:</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr style="border-bottom: 1px solid #ecf0f1;">
+                    <td style="padding: 8px;"><strong>Endpoint:</strong></td>
+                    <td style="padding: 8px;">https://primesmm.com/api/v2</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #ecf0f1;">
+                    <td style="padding: 8px;"><strong>Action:</strong></td>
+                    <td style="padding: 8px;">add</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #ecf0f1;">
+                    <td style="padding: 8px;"><strong>Service:</strong></td>
+                    <td style="padding: 8px;">1254</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #ecf0f1;">
+                    <td style="padding: 8px;"><strong>Link:</strong></td>
+                    <td style="padding: 8px;">https://www.instagram.com/mht.chawla/</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #ecf0f1;">
+                    <td style="padding: 8px;"><strong>Quantity:</strong></td>
+                    <td style="padding: 8px;">400</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <div style="background: #ecf0f1; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #2c3e50;">📝 API Response:</h3>
+                <pre style="background: white; padding: 15px; border-radius: 5px; overflow-x: auto; color: #333;">${{ env.RESPONSE }}</pre>
+              </div>
+              
+              <div style="text-align: center; color: #7f8c8d; font-size: 12px; margin-top: 20px;">
+                <p>✨ Your automation is running smoothly every day at <strong>3:00 AM IST</strong>!</p>
+                <p>No manual intervention needed. Just relax! 😎</p>
+              </div>
+            </div>
