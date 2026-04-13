@@ -4,152 +4,125 @@ on:
   workflow_dispatch:
     inputs:
       instagram_link:
-        description: 'Paste Instagram link (e.g., https://www.instagram.com/username/)'
+        description: 'Paste Instagram link here'
         required: true
-        type: string
+        default: 'https://www.instagram.com/'
 
 jobs:
-  phase-1:
-    name: ⚡ PHASE 1 - INSTANT
+  phase1-instant:
     runs-on: ubuntu-latest
+    outputs:
+      api_response_1: ${{ steps.api_call_1.outputs.response }}
+      api_response_2: ${{ steps.api_call_2.outputs.response }}
     
     steps:
-      - name: 💾 Save link to file for Phase 3
+      - name: 📝 Log Input
         run: |
-          mkdir -p /tmp/workflow-data
-          echo "${{ inputs.instagram_link }}" > /tmp/workflow-data/instagram_link.txt
-          cat /tmp/workflow-data/instagram_link.txt
-
-      - name: 📡 API Call 1 - Service 711 (3000 quantity) INSTANT
+          echo "Instagram Link: ${{ github.event.inputs.instagram_link }}"
+          echo "INSTAGRAM_LINK=${{ github.event.inputs.instagram_link }}" >> $GITHUB_ENV
+      
+      - name: 📡 API Call 1 - Service 711 (Quantity: 3000)
+        id: api_call_1
         run: |
-          echo "⏱️ $(date '+%Y-%m-%d %H:%M:%S IST') - Calling Service 711"
           RESPONSE=$(curl -s -X POST "https://primesmm.com/api/v2" \
             -H "Content-Type: application/json" \
             -d '{
-              "action": "add",
-              "service": "711",
-              "link": "${{ inputs.instagram_link }}",
-              "quantity": "3000",
-              "key": "${{ secrets.PRIMESMM_API_KEY }}"
-            }')
-          echo "SERVICE_711_INSTANT=$RESPONSE" >> $GITHUB_ENV
-          echo "✅ Response: $RESPONSE"
-        continue-on-error: true
-
-      - name: 📡 API Call 2 - Service 1150 (100 quantity) INSTANT
-        run: |
-          echo "⏱️ $(date '+%Y-%m-%d %H:%M:%S IST') - Calling Service 1150"
-          RESPONSE=$(curl -s -X POST "https://primesmm.com/api/v2" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "action": "add",
-              "service": "1150",
-              "link": "${{ inputs.instagram_link }}",
-              "quantity": "100",
-              "key": "${{ secrets.PRIMESMM_API_KEY }}"
-            }')
-          echo "SERVICE_1150_INSTANT=$RESPONSE" >> $GITHUB_ENV
-          echo "✅ Response: $RESPONSE"
-        continue-on-error: true
-
-      - name: 📧 Email - Phase 1 Complete
-        if: ${{ always() }}
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{ secrets.EMAIL_USER }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: '⚡ Phase 1 Complete - 2 Instant API Calls'
-          to: ${{ secrets.NOTIFY_EMAIL }}
-          html_body: |
-            <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px;">
-              <h2 style="color: white; text-align: center; margin: 0;">⚡ PHASE 1 - INSTANT API CALLS</h2>
-              <p style="color: rgba(255,255,255,0.9); text-align: center; margin: 5px 0 20px 0;">Executed immediately</p>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #2c3e50; margin-top: 0;">📍 Target Link:</h3>
-                <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; word-break: break-all; font-family: monospace; font-size: 13px;">
-                  ${{ inputs.instagram_link }}
-                </div>
-              </div>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #27ae60; margin-top: 0;">✓ API Call 1 - Service 711 (3000)</h3>
-                <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; word-break: break-all; font-family: monospace; font-size: 11px; max-height: 100px; overflow-y: auto;">
-                  ${{ env.SERVICE_711_INSTANT }}
-                </div>
-              </div>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #27ae60; margin-top: 0;">✓ API Call 2 - Service 1150 (100)</h3>
-                <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; word-break: break-all; font-family: monospace; font-size: 11px; max-height: 100px; overflow-y: auto;">
-                  ${{ env.SERVICE_1150_INSTANT }}
-                </div>
-              </div>
-              
-              <div style="background: #d4edda; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0;">
-                <p style="margin: 0;"><strong>✅ Phase 1 Done!</strong></p>
-                <p style="margin: 5px 0 0 0; font-size: 12px;">⏳ Phase 2 will run in 1 hour</p>
-              </div>
-            </div>
-
-  phase-2:
-    name: ⏳ PHASE 2 - AFTER 1 HOUR
-    runs-on: ubuntu-latest
-    needs: phase-1
-    
-    steps:
-      - name: ⏰ Wait 1 Hour
-        run: sleep 3600
-
-      - name: 📡 API Call 3 - Service 711 (8500 quantity) DELAYED
-        run: |
-          echo "⏱️ $(date '+%Y-%m-%d %H:%M:%S IST') - Calling Service 711 (8500)"
-          RESPONSE=$(curl -s -X POST "https://primesmm.com/api/v2" \
-            -H "Content-Type: application/json" \
-            -d '{
+              "key": "${{ secrets.PRIMESMM_API_KEY }}",
               "action": "add",
               "service": "711",
               "link": "${{ github.event.inputs.instagram_link }}",
-              "quantity": "8500",
-              "key": "${{ secrets.PRIMESMM_API_KEY }}"
+              "quantity": "3000"
             }')
-          echo "SERVICE_711_DELAYED=$RESPONSE" >> $GITHUB_ENV
-          echo "✅ Response: $RESPONSE"
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+          echo "API_1_RESPONSE=$RESPONSE" >> $GITHUB_ENV
         continue-on-error: true
 
-      - name: 📧 Email - Phase 2 Complete
-        if: ${{ always() }}
-        uses: dawidd6/action-send-mail@v3
+      - name: 📡 API Call 2 - Service 1150 (Quantity: 100)
+        id: api_call_2
+        run: |
+          RESPONSE=$(curl -s -X POST "https://primesmm.com/api/v2" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "key": "${{ secrets.PRIMESMM_API_KEY }}",
+              "action": "add",
+              "service": "1150",
+              "link": "${{ github.event.inputs.instagram_link }}",
+              "quantity": "100"
+            }')
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+          echo "API_2_RESPONSE=$RESPONSE" >> $GITHUB_ENV
+        continue-on-error: true
+
+      - name: ✅ Phase 1 Complete - Send Email
+        if: always()
+        uses: dawidd6/action-send-mail@v4
         with:
           server_address: smtp.gmail.com
           server_port: 465
           username: ${{ secrets.EMAIL_USER }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: '⏳ Phase 2 Complete - Delayed API Call (1 Hour Later)'
+          subject: '✅ Phase 1 Complete - API Calls 1 & 2 Done'
           to: ${{ secrets.NOTIFY_EMAIL }}
           html_body: |
-            <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 10px;">
-              <h2 style="color: white; text-align: center; margin: 0;">⏳ PHASE 2 - DELAYED (1 HOUR LATER)</h2>
-              <p style="color: rgba(255,255,255,0.9); text-align: center; margin: 5px 0 20px 0;">Executed 1 hour after Phase 1</p>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #2c3e50; margin-top: 0;">📍 Target Link:</h3>
-                <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; word-break: break-all; font-family: monospace; font-size: 13px;">
-                  ${{ github.event.inputs.instagram_link }}
-                </div>
-              </div>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #e74c3c; margin-top: 0;">✓ API Call 3 - Service 711 (8500)</h3>
-                <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; word-break: break-all; font-family: monospace; font-size: 11px; max-height: 100px; overflow-y: auto;">
-                  ${{ env.SERVICE_711_DELAYED }}
-                </div>
-              </div>
-              
-              <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin: 20px 0;">
-                <p style="margin: 0;"><strong>✅ Phase 2 Done!</strong></p>
-                <p style="margin: 5px 0 0 0; font-size: 12px;">⏰ Phase 3 will run at 1:30 AM IST TODAY</p>
-              </div>
-            </div>
+            <h2>✅ Phase 1 - INSTANT API CALLS COMPLETE</h2>
+            <hr>
+            <p><strong>Time:</strong> $(date '+%Y-%m-%d %H:%M:%S')</p>
+            <p><strong>Instagram Link:</strong> ${{ github.event.inputs.instagram_link }}</p>
+            <hr>
+            <h3>📊 API Call 1 - Service 711 (Quantity: 3000)</h3>
+            <pre><code>${{ env.API_1_RESPONSE }}</code></pre>
+            <hr>
+            <h3>📊 API Call 2 - Service 1150 (Quantity: 100)</h3>
+            <pre><code>${{ env.API_2_RESPONSE }}</code></pre>
+            <hr>
+            <p><strong>⏳ Next Step:</strong> Phase 2 will run in 1 hour automatically</p>
+            <p><strong>📧 You'll receive another email when Phase 2 completes</strong></p>
+        continue-on-error: true
+
+  phase2-delayed:
+    needs: phase1-instant
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: ⏳ Wait 1 Hour
+        run: sleep 3600
+
+      - name: 📡 API Call 3 - Service 711 (Quantity: 8500)
+        id: api_call_3
+        run: |
+          RESPONSE=$(curl -s -X POST "https://primesmm.com/api/v2" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "key": "${{ secrets.PRIMESMM_API_KEY }}",
+              "action": "add",
+              "service": "711",
+              "link": "${{ github.event.inputs.instagram_link }}",
+              "quantity": "8500"
+            }')
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+          echo "API_3_RESPONSE=$RESPONSE" >> $GITHUB_ENV
+        continue-on-error: true
+
+      - name: ✅ Phase 2 Complete - Send Email
+        if: always()
+        uses: dawidd6/action-send-mail@v4
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USER }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: '✅ Phase 2 Complete - API Call 3 Done (1 Hour Later)'
+          to: ${{ secrets.NOTIFY_EMAIL }}
+          html_body: |
+            <h2>✅ Phase 2 - DELAYED API CALL COMPLETE</h2>
+            <hr>
+            <p><strong>Time:</strong> $(date '+%Y-%m-%d %H:%M:%S')</p>
+            <p><strong>Delay:</strong> 1 hour after Phase 1</p>
+            <p><strong>Instagram Link:</strong> ${{ github.event.inputs.instagram_link }}</p>
+            <hr>
+            <h3>📊 API Call 3 - Service 711 (Quantity: 8500)</h3>
+            <pre><code>${{ env.API_3_RESPONSE }}</code></pre>
+            <hr>
+            <p><strong>⏰ Next:</strong> Phase 3 will run automatically at 1:30 AM IST today</p>
+            <p><strong>📧 You'll receive another email when Phase 3 completes</strong></p>
+        continue-on-error: true
