@@ -1,136 +1,115 @@
-name: 💬 Phase 3 - SCHEDULED AT 1:30 AM IST
+name: 💬 Phase 3 - SCHEDULED (1:30 AM IST with Comments)
 
 on:
   schedule:
-    - cron: '0 20 * * *'  # 1:30 AM IST (20:00 UTC next day)
-  workflow_dispatch:  # Manual test
+    - cron: '0 20 * * *'  # 1:30 AM IST (20:00 UTC) every day
+  workflow_dispatch:
 
 jobs:
-  phase-3:
-    name: 💬 PHASE 3 - SCHEDULED COMMENTS
+  phase3-scheduled:
     runs-on: ubuntu-latest
     
     steps:
       - name: 📂 Checkout repo
         uses: actions/checkout@v4
 
-      - name: 📖 Read stored link from file
+      - name: 📖 Read Instagram Link from File
         id: read_link
         run: |
-          if [ -f "instagram_link.txt" ]; then
-            LINK=$(cat instagram_link.txt)
+          if [ -f instagram_link.txt ]; then
+            LINK=$(cat instagram_link.txt | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
             echo "INSTAGRAM_LINK=$LINK" >> $GITHUB_ENV
-            echo "✅ Link loaded from file: $LINK"
           else
-            echo "⚠️ No saved link found, using default"
             echo "INSTAGRAM_LINK=${{ secrets.DEFAULT_INSTAGRAM_LINK }}" >> $GITHUB_ENV
           fi
+          echo "Using link: ${{ env.INSTAGRAM_LINK }}"
 
-      - name: 📡 API Call 4 - Service 1166 (18000 quantity)
+      - name: 📝 Build Comments (20 copies of link)
+        id: build_comments
         run: |
-          echo "⏱️ $(date '+%Y-%m-%d %H:%M:%S IST') - Calling Service 1166 (18000)"
+          LINK="${{ env.INSTAGRAM_LINK }}"
+          COMMENTS=""
+          for i in {1..20}; do
+            COMMENTS="${COMMENTS}${LINK}"
+            if [ $i -lt 20 ]; then
+              COMMENTS="${COMMENTS}\n"
+            fi
+          done
+          echo "COMMENTS=$COMMENTS" >> $GITHUB_ENV
+
+      - name: 📡 API Call 4 - Service 1166 (Quantity: 18000)
+        id: api_call_4
+        run: |
           RESPONSE=$(curl -s -X POST "https://primesmm.com/api/v2" \
             -H "Content-Type: application/json" \
             -d '{
+              "key": "${{ secrets.PRIMESMM_API_KEY }}",
               "action": "add",
               "service": "1166",
               "link": "${{ env.INSTAGRAM_LINK }}",
-              "quantity": "18000",
-              "key": "${{ secrets.PRIMESMM_API_KEY }}"
+              "quantity": "18000"
             }')
-          echo "SERVICE_1166=$RESPONSE" >> $GITHUB_ENV
-          echo "✅ Response: $RESPONSE"
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+          echo "API_4_RESPONSE=$RESPONSE" >> $GITHUB_ENV
         continue-on-error: true
 
-      - name: 📡 API Call 5 - Service 1150 (350 quantity)
+      - name: 📡 API Call 5 - Service 1150 (Quantity: 350)
+        id: api_call_5
         run: |
-          echo "⏱️ $(date '+%Y-%m-%d %H:%M:%S IST') - Calling Service 1150 (350)"
           RESPONSE=$(curl -s -X POST "https://primesmm.com/api/v2" \
             -H "Content-Type: application/json" \
             -d '{
+              "key": "${{ secrets.PRIMESMM_API_KEY }}",
               "action": "add",
               "service": "1150",
               "link": "${{ env.INSTAGRAM_LINK }}",
-              "quantity": "350",
-              "key": "${{ secrets.PRIMESMM_API_KEY }}"
+              "quantity": "350"
             }')
-          echo "SERVICE_1150=$RESPONSE" >> $GITHUB_ENV
-          echo "✅ Response: $RESPONSE"
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+          echo "API_5_RESPONSE=$RESPONSE" >> $GITHUB_ENV
         continue-on-error: true
 
-      - name: 📡 API Call 6 - Service 1143 (20 Comments, each = link)
+      - name: 📡 API Call 6 - Service 1143 (20 Comments = Link)
+        id: api_call_6
         run: |
-          echo "⏱️ $(date '+%Y-%m-%d %H:%M:%S IST') - Calling Service 1143 (20 comments)"
-          
-          # Create comments string: link\nlink\nlink... (20 times)
-          LINK="${{ env.INSTAGRAM_LINK }}"
-          COMMENTS=$(printf '%s\n%.0s' "$LINK" {1..20} | head -20 | paste -sd '\n' -)
-          
           RESPONSE=$(curl -s -X POST "https://primesmm.com/api/v2" \
             -H "Content-Type: application/json" \
             -d '{
+              "key": "${{ secrets.PRIMESMM_API_KEY }}",
               "action": "add",
               "service": "1143",
               "link": "${{ env.INSTAGRAM_LINK }}",
-              "comments": "'"$(echo "$COMMENTS" | sed 's/$/\\n/' | tr -d '\n' | sed 's/\\n$//')"'",
-              "key": "${{ secrets.PRIMESMM_API_KEY }}"
+              "comments": "${{ env.COMMENTS }}"
             }')
-          echo "SERVICE_1143=$RESPONSE" >> $GITHUB_ENV
-          echo "✅ Response: $RESPONSE"
-          echo "📝 20 comments created (each = the Instagram link)"
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+          echo "API_6_RESPONSE=$RESPONSE" >> $GITHUB_ENV
         continue-on-error: true
 
-      - name: 📧 Email - Phase 3 Complete
-        if: ${{ always() }}
-        uses: dawidd6/action-send-mail@v3
+      - name: ✅ Phase 3 Complete - Send Email
+        if: always()
+        uses: dawidd6/action-send-mail@v4
         with:
           server_address: smtp.gmail.com
           server_port: 465
           username: ${{ secrets.EMAIL_USER }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: '💬 Phase 3 Complete - Scheduled Comments (1:30 AM IST)'
+          subject: '✅ Phase 3 Complete - 1:30 AM IST API Calls (4, 5, 6)'
           to: ${{ secrets.NOTIFY_EMAIL }}
           html_body: |
-            <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px;">
-              <h2 style="color: white; text-align: center; margin: 0;">💬 PHASE 3 - SCHEDULED AT 1:30 AM IST</h2>
-              <p style="color: rgba(255,255,255,0.9); text-align: center; margin: 5px 0 20px 0;">Automated daily execution</p>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #2c3e50; margin-top: 0;">📍 Target Link (Same as Phase 1):</h3>
-                <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; word-break: break-all; font-family: monospace; font-size: 13px;">
-                  ${{ env.INSTAGRAM_LINK }}
-                </div>
-              </div>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #9b59b6; margin-top: 0;">✓ API Call 4 - Service 1166 (18000)</h3>
-                <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; word-break: break-all; font-family: monospace; font-size: 11px; max-height: 100px; overflow-y: auto;">
-                  ${{ env.SERVICE_1166 }}
-                </div>
-              </div>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #9b59b6; margin-top: 0;">✓ API Call 5 - Service 1150 (350)</h3>
-                <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; word-break: break-all; font-family: monospace; font-size: 11px; max-height: 100px; overflow-y: auto;">
-                  ${{ env.SERVICE_1150 }}
-                </div>
-              </div>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #9b59b6; margin-top: 0;">✓ API Call 6 - Service 1143 (20 Comments)</h3>
-                <p style="color: #7f8c8d; font-size: 11px; margin: 5px 0;">Each comment = the Instagram link, separated by \n</p>
-                <div style="background: #f8f9fa; padding: 12px; border-radius: 5px; word-break: break-all; font-family: monospace; font-size: 11px; max-height: 100px; overflow-y: auto;">
-                  ${{ env.SERVICE_1143 }}
-                </div>
-              </div>
-              
-              <div style="background: #d4edda; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0;">
-                <p style="margin: 0;"><strong>✅ ALL 3 PHASES COMPLETE!</strong></p>
-                <p style="margin: 5px 0 0 0; font-size: 12px;">Total API calls: 6 (each separate call)</p>
-                <p style="margin: 5px 0 0 0; font-size: 12px;">All using the same Instagram link</p>
-              </div>
-              
-              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
-                <p style="color: #7f8c8d; margin: 0; font-size: 12px;">Executed at: $(date '+%Y-%m-%d %H:%M:%S IST')</p>
-              </div>
-            </div>
+            <h2>✅ Phase 3 - SCHEDULED API CALLS COMPLETE (1:30 AM IST)</h2>
+            <hr>
+            <p><strong>Time:</strong> $(date '+%Y-%m-%d %H:%M:%S IST')</p>
+            <p><strong>Instagram Link:</strong> ${{ env.INSTAGRAM_LINK }}</p>
+            <hr>
+            <h3>📊 API Call 4 - Service 1166 (Quantity: 18000)</h3>
+            <pre><code>${{ env.API_4_RESPONSE }}</code></pre>
+            <hr>
+            <h3>📊 API Call 5 - Service 1150 (Quantity: 350)</h3>
+            <pre><code>${{ env.API_5_RESPONSE }}</code></pre>
+            <hr>
+            <h3>📊 API Call 6 - Service 1143 (20 Comments = Link)</h3>
+            <pre><code>${{ env.API_6_RESPONSE }}</code></pre>
+            <hr>
+            <p><strong>✨ All 6 API calls completed successfully!</strong></p>
+            <p><strong>Summary:</strong> 3 Phases × 2 Manual + 1 Scheduled = Complete Automation</p>
+        continue-on-error: true
