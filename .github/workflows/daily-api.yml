@@ -13,19 +13,26 @@ jobs:
       - name: 📡 Call Followersmeta API
         id: api_call
         run: |
-          RESPONSE=$(curl -s -X POST "https://followersmeta.com/api/v2" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "action": "add",
-              "service": "2",
-              "link": "https://www.instagram.com/mht.chawla/",
-              "quantity": "400",
-              "key": "${{ secrets.PRIMESMM_API_KEY }}"
-            }')
-          
-          echo "RESPONSE=$RESPONSE" >> $GITHUB_ENV
-          echo "TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S IST')" >> $GITHUB_ENV
-          echo "STATUS=✅ API CALLED SUCCESSFULLY" >> $GITHUB_ENV
+          RESPONSE=$(curl -sS -X POST "https://followersmeta.com/api/v2" \
+            --data-urlencode "key=${{ secrets.FOLLOWERSMETA_API_KEY || secrets.PRIMESMM_API_KEY }}" \
+            --data-urlencode "action=add" \
+            --data-urlencode "service=2" \
+            --data-urlencode "link=https://www.instagram.com/mht.chawla/" \
+            --data-urlencode "quantity=400")
+
+          if echo "$RESPONSE" | jq -e '.order' >/dev/null 2>&1; then
+            STATUS="✅ API CALLED SUCCESSFULLY"
+          else
+            STATUS="❌ API CALL FAILED"
+          fi
+
+          {
+            echo "RESPONSE<<EOF"
+            echo "$RESPONSE"
+            echo "EOF"
+            echo "TIMESTAMP=$(TZ='Asia/Kolkata' date '+%Y-%m-%d %H:%M:%S IST')"
+            echo "STATUS=$STATUS"
+          } >> "$GITHUB_ENV"
           
         continue-on-error: true
 
