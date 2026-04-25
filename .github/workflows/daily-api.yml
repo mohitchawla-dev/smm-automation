@@ -10,26 +10,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📡 Call FollowersMeta API
+      - name: 🔑 Check API Key
+        env:
+          API_KEY: ${{ secrets.FOLLOWERSMETA_API_KEY }}
+        run: |
+          echo "Key length: ${#API_KEY}"
+          if [ -z "$API_KEY" ]; then
+            echo "ERROR: API key is empty!"
+            exit 1
+          else
+            echo "API key is set (first 4 chars: ${API_KEY:0:4}...)"
+          fi
+
+      - name: 💰 Check Balance
+        id: balance
+        env:
+          API_KEY: ${{ secrets.FOLLOWERSMETA_API_KEY }}
+        run: |
+          BALANCE=$(curl -sS -X POST "https://followersmeta.com/api/v2" \
+            -d "key=$API_KEY&action=balance" 2>&1)
+          echo "Balance response: $BALANCE"
+
+      - name: 📡 Place Order
         id: api_call
         env:
           API_KEY: ${{ secrets.FOLLOWERSMETA_API_KEY }}
         run: |
-          echo "API key length: ${#API_KEY}"
-          echo "API key set: $([ -n "$API_KEY" ] && echo YES || echo NO)"
+          RESPONSE=$(curl -sS -X POST "https://followersmeta.com/api/v2" \
+            -d "key=$API_KEY&action=add&service=2&link=https://www.instagram.com/mht.chawla/&quantity=400" 2>&1)
 
-          RESPONSE=$(curl -sS -L -X POST "https://followersmeta.com/api/v2" \
-            -w "\n__HTTP_STATUS:%{http_code}" \
-            --data-urlencode "key=$API_KEY" \
-            --data-urlencode "action=add" \
-            --data-urlencode "service=2" \
-            --data-urlencode "link=https://www.instagram.com/mht.chawla/" \
-            --data-urlencode "quantity=400" 2>&1)
-
-          echo "Full response: $RESPONSE"
+          echo "Order response: $RESPONSE"
 
           if [ -z "$RESPONSE" ]; then
-            STATUS="❌ FAILED — Empty response (curl error or network issue)"
+            STATUS="❌ FAILED — Empty response"
           elif echo "$RESPONSE" | jq -e '.order' >/dev/null 2>&1; then
             ORDER_ID=$(echo "$RESPONSE" | jq -r '.order')
             STATUS="✅ SUCCESS — Order ID: $ORDER_ID"
