@@ -37,7 +37,11 @@ jobs:
           API_KEY: ${{ secrets.FOLLOWERSMETA_API_KEY }}
         run: |
           RESPONSE=$(curl -sS -X POST "https://followersmeta.com/api/v2" \
-            -d "key=$API_KEY&action=add&service=2&link=https://www.instagram.com/mht.chawla/&quantity=400" 2>&1)
+            -d "key=$API_KEY" \
+            -d "action=add" \
+            -d "service=2" \
+            -d "quantity=400" \
+            --data-urlencode "link=https://www.instagram.com/mht.chawla/" 2>&1)
 
           echo "Order response: $RESPONSE"
 
