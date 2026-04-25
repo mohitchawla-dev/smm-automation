@@ -1,29 +1,37 @@
-name: 🤖 Daily API Automation - FollowersMeta
+name: 🤖 Daily Instagram Followers - FollowersMeta
 
 on:
   schedule:
-    - cron: '30 21 * * *'  # Runs at 3:00 AM IST daily (21:30 UTC = 3:00 AM IST)
-  workflow_dispatch:  # Allows manual testing from GitHub UI
+    - cron: '30 21 * * *'  # 3:00 AM IST daily
+  workflow_dispatch:
 
 jobs:
   run-api:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: 📡 Call Followersmeta API
+      - name: 📡 Call FollowersMeta API
         id: api_call
+        env:
+          API_KEY: ${{ secrets.FOLLOWERSMETA_API_KEY }}
         run: |
           RESPONSE=$(curl -sS -X POST "https://followersmeta.com/api/v2" \
-            --data-urlencode "key=${{ secrets.FOLLOWERSMETA_API_KEY || secrets.PRIMESMM_API_KEY }}" \
+            --data-urlencode "key=$API_KEY" \
             --data-urlencode "action=add" \
             --data-urlencode "service=2" \
             --data-urlencode "link=https://www.instagram.com/mht.chawla/" \
-            --data-urlencode "quantity=400")
+            --data-urlencode "quantity=400" 2>&1)
 
-          if echo "$RESPONSE" | jq -e '.order' >/dev/null 2>&1; then
-            STATUS="✅ API CALLED SUCCESSFULLY"
+          echo "API Response: $RESPONSE"
+
+          if [ -z "$RESPONSE" ]; then
+            STATUS="❌ FAILED — Empty response (curl error or network issue)"
+          elif echo "$RESPONSE" | jq -e '.order' >/dev/null 2>&1; then
+            ORDER_ID=$(echo "$RESPONSE" | jq -r '.order')
+            STATUS="✅ SUCCESS — Order ID: $ORDER_ID"
           else
-            STATUS="❌ API CALL FAILED"
+            ERROR=$(echo "$RESPONSE" | jq -r '.error // "Unknown error"' 2>/dev/null || echo "$RESPONSE")
+            STATUS="❌ FAILED — $ERROR"
           fi
 
           {
@@ -33,80 +41,29 @@ jobs:
             echo "TIMESTAMP=$(TZ='Asia/Kolkata' date '+%Y-%m-%d %H:%M:%S IST')"
             echo "STATUS=$STATUS"
           } >> "$GITHUB_ENV"
-          
         continue-on-error: true
 
       - name: 📧 Send Email Notification
-        if: ${{ always() }}
+        if: always()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 465
           username: ${{ secrets.EMAIL_USER }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: '✅ Daily FollowersMeta API Run - ${{ env.TIMESTAMP }}'
+          subject: 'FollowersMeta Daily — ${{ env.STATUS }} — ${{ env.TIMESTAMP }}'
           to: ${{ secrets.NOTIFY_EMAIL }}
           from: 'GitHub Actions <noreply@github.com>'
           body: |
-            🤖 Daily FollowersMeta API Automation Report
-            ════════════════════════════════════════
-            
-            ⏰ Execution Time: ${{ env.TIMESTAMP }}
-            ✅ Status: ${{ env.STATUS }}
-            
-            📊 API Details:
-            • Endpoint: https://followersmeta.com/api/v2
-            • Action: add
-            • Service: 2
-            • Link: https://www.instagram.com/mht.chawla/
-            • Quantity: 400
-            
-            📝 API Response:
+            🤖 FollowersMeta Daily API Report
+            ══════════════════════════════════
+
+            ⏰ Time:    ${{ env.TIMESTAMP }}
+            📊 Status:  ${{ env.STATUS }}
+
+            📝 Raw API Response:
             ${{ env.RESPONSE }}
-            
-            ✨ Your automation is running smoothly every day at 3:00 AM IST!
-          html_body: |
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f5f5f5; padding: 20px; border-radius: 10px;">
-              <h2 style="color: #27ae60; text-align: center;">✅ Daily FollowersMeta API Automation</h2>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <p><strong>⏰ Execution Time:</strong> ${{ env.TIMESTAMP }}</p>
-                <p><strong>✅ Status:</strong> ${{ env.STATUS }}</p>
-              </div>
-              
-              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #2c3e50;">📊 API Request Details:</h3>
-                <table style="width: 100%; border-collapse: collapse;">
-                  <tr style="border-bottom: 1px solid #ecf0f1;">
-                    <td style="padding: 8px;"><strong>Endpoint:</strong></td>
-                    <td style="padding: 8px;">https://followersmeta.com/api/v2</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #ecf0f1;">
-                    <td style="padding: 8px;"><strong>Action:</strong></td>
-                    <td style="padding: 8px;">add</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #ecf0f1;">
-                    <td style="padding: 8px;"><strong>Service:</strong></td>
-                    <td style="padding: 8px;">2</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #ecf0f1;">
-                    <td style="padding: 8px;"><strong>Link:</strong></td>
-                    <td style="padding: 8px;">https://www.instagram.com/mht.chawla/</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #ecf0f1;">
-                    <td style="padding: 8px;"><strong>Quantity:</strong></td>
-                    <td style="padding: 8px;">400</td>
-                  </tr>
-                </table>
-              </div>
-              
-              <div style="background: #ecf0f1; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #2c3e50;">📝 API Response:</h3>
-                <pre style="background: white; padding: 15px; border-radius: 5px; overflow-x: auto; color: #333;">${{ env.RESPONSE }}</pre>
-              </div>
-              
-              <div style="text-align: center; color: #7f8c8d; font-size: 12px; margin-top: 20px;">
-                <p>✨ Your automation is running smoothly every day at <strong>3:00 AM IST</strong>!</p>
-                <p>No manual intervention needed. Just relax! 😎</p>
-              </div>
-            </div>
+
+            ──────────────────────────────────
+            Service: 2 | Quantity: 400
+            Link: https://www.instagram.com/mht.chawla/
